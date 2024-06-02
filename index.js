@@ -124,9 +124,6 @@ async function run() {
     app.post("/products", verifyToken, async (req, res) => {
       const productsItem = req.body;
       productsItem.timestamp = new Date().toISOString();
-      // if (req.body.tags && typeof req.body.tags === "string") {
-      //   productsItem.tags = req.body.tags.split(",").map((tag) => tag.trim());
-      // }
       const result = await ProductCollection.insertOne(productsItem);
       res.send(result);
     });
@@ -179,6 +176,86 @@ async function run() {
         res.send(result);
       }
     );
+
+    // app.put("/voteCount/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: new ObjectId(id) };
+    //   const options = { upsert: true };
+    //   // console.log(id);
+    //   const findProduct = await ProductCollection.findOne(query);
+    //   const {
+    //     productName,
+    //     productImage,
+    //     description,
+    //     tags,
+    //     link,
+    //     username,
+    //     email,
+    //     photoURL,
+    //     timestamp,
+    //     upVote,
+    //   } = findProduct;
+    //   // console.log(findProduct);
+    //   const updatedDoc = {
+    //     $set: {
+    //       productName,
+    //       productImage,
+    //       description,
+    //       tags,
+    //       link,
+    //       username,
+    //       email,
+    //       photoURL,
+    //       timestamp,
+    //       upVote: upVote + 1,
+    //     },
+    //   };
+    //   const result = await ProductCollection.updateOne(
+    //     query,
+    //     updatedDoc,
+    //     options
+    //   );
+    //   res.send(result);
+    // });
+
+    app.put("/voteCount/:id", async (req, res) => {
+      const id = req.params.id;
+      const userEmail = req.body.userEmail;
+      const query = { _id: new ObjectId(id) };
+
+      try {
+        const findProduct = await ProductCollection.findOne(query);
+        // if (!findProduct) {
+        //   return res.status(404).json({ message: "Product not found" });
+        // }
+
+        // if  user already voted
+        if (findProduct.voters && findProduct.voters.includes(userEmail)) {
+          return res
+            .status(400)
+            .json({ message: "You have already voted for this product" });
+        }
+
+        const updatedDoc = {
+          $inc: { upVote: 1 },
+          $push: { voters: userEmail },
+        };
+
+        const result = await ProductCollection.updateOne(query, {
+          $inc: { upVote: 1 },
+          $push: { voters: userEmail },
+        });
+
+        // if (result.modifiedCount === 0) {
+        //   throw new Error("Failed to update the product");
+        // }
+
+        res.status(200).json(result);
+      } catch (error) {
+        console.error("Error updating vote count:", error);
+        res.status(500).json({ message: error.message });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
