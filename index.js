@@ -82,6 +82,7 @@ async function run() {
     // ProductCollection data get
     app.get("/products", async (req, res) => {
       const result = await ProductCollection.find().toArray();
+      // const result = await ProductCollection.find().sort({ timestamp: -1 }).toArray();
       res.send(result);
     });
 
@@ -122,6 +123,10 @@ async function run() {
     // Product collection data post
     app.post("/products", verifyToken, async (req, res) => {
       const productsItem = req.body;
+      productsItem.timestamp = new Date().toISOString();
+      // if (req.body.tags && typeof req.body.tags === "string") {
+      //   productsItem.tags = req.body.tags.split(",").map((tag) => tag.trim());
+      // }
       const result = await ProductCollection.insertOne(productsItem);
       res.send(result);
     });
