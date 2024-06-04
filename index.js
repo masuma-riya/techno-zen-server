@@ -23,6 +23,7 @@ async function run() {
 
     const userCollection = client.db("technoZen").collection("users");
     const ProductCollection = client.db("technoZen").collection("products");
+    const ReviewsCollection = client.db("technoZen").collection("reviews");
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -94,6 +95,20 @@ async function run() {
       res.send(result);
     });
 
+    // get single product data
+    app.get("/allProducts/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await ProductCollection.findOne(query);
+      res.send(result);
+    });
+
+    // reviews collection data get
+    app.get("/allReviews", verifyToken, async (req, res) => {
+      const result = await ReviewsCollection.find().toArray();
+      res.send(result);
+    });
+
     // admin
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -126,6 +141,13 @@ async function run() {
         moderator = user?.role === "moderator";
       }
       res.send({ moderator });
+    });
+
+    // Reveiw collection data post
+    app.post("/addReview", verifyToken, async (req, res) => {
+      const usersReview = req.body;
+      const result = await ReviewsCollection.insertOne(usersReview);
+      res.send(result);
     });
 
     // Product collection data post
@@ -226,20 +248,16 @@ async function run() {
     //   res.send(result);
     // });
 
-    app.put("/voteCount/:id", async (req, res) => {
+    app.put("/voteCount/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const userEmail = req.body.userEmail;
       const query = { _id: new ObjectId(id) };
 
       try {
         const findProduct = await ProductCollection.findOne(query);
-        // if (!findProduct) {
-        //   return res.status(404).json({ message: "Product not found" });
-        // }
 
-        // if  user already voted
         if (findProduct.voters && findProduct.voters.includes(userEmail)) {
-          return res.status(400).json({ message: "You have already vote" });
+          return;
         }
 
         const updatedDoc = {
@@ -252,14 +270,9 @@ async function run() {
           $push: { voters: userEmail },
         });
 
-        // if (result.modifiedCount === 0) {
-        //   throw new Error("Failed to update the product");
-        // }
-
         res.status(200).json(result);
       } catch (error) {
-        console.error("Error updating vote count:", error);
-        res.status(500).json({ message: error.message });
+        console.error("Error while updating vote count:", error);
       }
     });
 
@@ -313,57 +326,98 @@ async function run() {
     //   // }
     // });
 
-    // change pending product status to Accepted
-    app.put("/acceptedProduct/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const newStatus = "Accepted";
+    // change productType to featured
+    app.put(
+      "/productType/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const newType = "Featured";
 
-      try {
-        const result = await ProductCollection.updateOne(filter, {
-          $set: { ProductStatus: newStatus },
-        });
+        try {
+          const result = await ProductCollection.updateOne(filter, {
+            $set: { ProductType: newType },
+          });
 
-        if (result.modifiedCount > 0) {
-          res
-            .status(200)
-            .json({ message: "Product status updated successfully" });
-        } else {
-          res
-            .status(404)
-            .json({ message: "Product not found or status not updated" });
+          if (result.modifiedCount > 0) {
+            res
+              .status(200)
+              .json({ message: "Product Type Updated successfully" });
+          } else {
+            res
+              .status(404)
+              .json({ message: "Product not found or Type not updated" });
+          }
+        } catch (error) {
+          console.error("Error updating product Type:", error);
+          res.status(500).json({ message: "Internal server error" });
         }
-      } catch (error) {
-        console.error("Error updating product status:", error);
-        res.status(500).json({ message: "Internal server error" });
       }
-    });
+    );
+
+    // change pending product status to Accepted
+    app.put(
+      "/acceptedProduct/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const newStatus = "Accepted";
+
+        try {
+          const result = await ProductCollection.updateOne(filter, {
+            $set: { ProductStatus: newStatus },
+          });
+
+          if (result.modifiedCount > 0) {
+            res
+              .status(200)
+              .json({ message: "Product status updated successfully" });
+          } else {
+            res
+              .status(404)
+              .json({ message: "Product not found or status not updated" });
+          }
+        } catch (error) {
+          console.error("Error updating product status:", error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      }
+    );
 
     // change pending product status to Rejected
-    app.put("/rejectedProduct/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const newStatus = "Rejected";
+    app.put(
+      "/rejectedProduct/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const newStatus = "Rejected";
 
-      try {
-        const result = await ProductCollection.updateOne(filter, {
-          $set: { ProductStatus: newStatus },
-        });
+        try {
+          const result = await ProductCollection.updateOne(filter, {
+            $set: { ProductStatus: newStatus },
+          });
 
-        if (result.modifiedCount > 0) {
-          res
-            .status(200)
-            .json({ message: "Product status updated successfully" });
-        } else {
-          res
-            .status(404)
-            .json({ message: "Product not found or status not updated" });
+          if (result.modifiedCount > 0) {
+            res
+              .status(200)
+              .json({ message: "Product status updated successfully" });
+          } else {
+            res
+              .status(404)
+              .json({ message: "Product not found or status not updated" });
+          }
+        } catch (error) {
+          console.error("Error updating product status:", error);
+          res.status(500).json({ message: "Internal server error" });
         }
-      } catch (error) {
-        console.error("Error updating product status:", error);
-        res.status(500).json({ message: "Internal server error" });
       }
-    });
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
