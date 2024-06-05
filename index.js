@@ -88,6 +88,19 @@ async function run() {
       res.send(result);
     });
 
+    // ProductCollection data get only reported
+    app.get(
+      "/reportedProduct",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const result = await ProductCollection.find({
+          ProductFeedback: "Reported",
+        }).toArray();
+        res.send(result);
+      }
+    );
+
     // ProductCollection all data get
     app.get("/allProducts", async (req, res) => {
       const result = await ProductCollection.find().toArray();
@@ -103,7 +116,7 @@ async function run() {
       res.send(result);
     });
 
-    // reviews collection data get
+    // all reviews data get
     app.get("/allReviews", verifyToken, async (req, res) => {
       const result = await ReviewsCollection.find().toArray();
       res.send(result);
@@ -207,47 +220,6 @@ async function run() {
       }
     );
 
-    // app.put("/voteCount/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) };
-    //   const options = { upsert: true };
-    //   // console.log(id);
-    //   const findProduct = await ProductCollection.findOne(query);
-    //   const {
-    //     productName,
-    //     productImage,
-    //     description,
-    //     tags,
-    //     link,
-    //     username,
-    //     email,
-    //     photoURL,
-    //     timestamp,
-    //     upVote,
-    //   } = findProduct;
-    //   // console.log(findProduct);
-    //   const updatedDoc = {
-    //     $set: {
-    //       productName,
-    //       productImage,
-    //       description,
-    //       tags,
-    //       link,
-    //       username,
-    //       email,
-    //       photoURL,
-    //       timestamp,
-    //       upVote: upVote + 1,
-    //     },
-    //   };
-    //   const result = await ProductCollection.updateOne(
-    //     query,
-    //     updatedDoc,
-    //     options
-    //   );
-    //   res.send(result);
-    // });
-
     app.put("/voteCount/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const userEmail = req.body.userEmail;
@@ -275,56 +247,6 @@ async function run() {
         console.error("Error while updating vote count:", error);
       }
     });
-
-    // change pending product status
-    // app.put("/acceptedProduct/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const data = req.body;
-
-    //   const filter = { _id: new ObjectId(id) };
-    //   const options = { upsert: true };
-
-    //   const acceptedProduct = await ProductCollection.findOne(filter);
-    //   const {
-    //     productName,
-    //     productImage,
-    //     description,
-    //     tags,
-    //     link,
-    //     username,
-    //     email,
-    //     photoURL,
-    //     timestamp,
-    //     upVote,
-    //   } = acceptedProduct;
-
-    //   const product = {
-    //     $set: {
-    //       productName,
-    //       productImage,
-    //       description,
-    //       tags,
-    //       link,
-    //       username,
-    //       email,
-    //       photoURL,
-    //       timestamp,
-    //       upVote,
-    //       ProductStatus: "Accepted",
-    //     },
-    //   };
-    //   const updatedStatus = await ProductCollection.updateOne(
-    //     filter,
-    //     product,
-    //     options
-    //   );
-    //   // if (updatedStatus.modifiedCount > 0) {
-    //   //   const result = await requestedCollection.insertOne(data);
-    //   //   res.send(result);
-    //   // } else {
-    //   //   res.status(404).send({ message: "Request failed" });
-    //   // }
-    // });
 
     // change productType to featured
     app.put(
@@ -418,6 +340,32 @@ async function run() {
         }
       }
     );
+
+    // change ProductFeedback to Reported
+    app.put("/reportdProduct/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const newFeedback = "Reported";
+
+      try {
+        const result = await ProductCollection.updateOne(filter, {
+          $set: { ProductFeedback: newFeedback },
+        });
+
+        if (result.modifiedCount > 0) {
+          res
+            .status(200)
+            .json({ message: "Product Feedback updated successfully" });
+        } else {
+          res
+            .status(404)
+            .json({ message: "Product not found or Feedback not updated" });
+        }
+      } catch (error) {
+        console.error("Error updating product Feedback:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
