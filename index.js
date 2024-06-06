@@ -88,6 +88,16 @@ async function run() {
       res.send(result);
     });
 
+    // ProductCollection data get only Featured
+    app.get("/featuredPro", async (req, res) => {
+      const result = await ProductCollection.find({
+        ProductType: "Featured",
+      })
+        .sort({ timestamp: -1 })
+        .toArray();
+      res.send(result);
+    });
+
     // ProductCollection data get only reported
     app.get(
       "/reportedProduct",
@@ -104,7 +114,6 @@ async function run() {
     // ProductCollection all data get
     app.get("/allProducts", async (req, res) => {
       const result = await ProductCollection.find().toArray();
-      // const result = await ProductCollection.find().sort({ timestamp: -1 }).toArray();
       res.send(result);
     });
 
@@ -119,6 +128,16 @@ async function run() {
     // all reviews data get
     app.get("/allReviews", verifyToken, async (req, res) => {
       const result = await ReviewsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // sort by vote count des
+    app.get("/trendingProducts", async (req, res) => {
+      const { upVote } = req.query;
+      const cursor = ProductCollection.find().sort({
+        upVote: upVote || "desc",
+      });
+      const result = await cursor.toArray();
       res.send(result);
     });
 
