@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { MongoClient, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middlewares
@@ -24,6 +25,7 @@ async function run() {
     const userCollection = client.db("technoZen").collection("users");
     const ProductCollection = client.db("technoZen").collection("products");
     const ReviewsCollection = client.db("technoZen").collection("reviews");
+    const PaymentCollection = client.db("technoZen").collection("payments");
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -173,6 +175,39 @@ async function run() {
         moderator = user?.role === "moderator";
       }
       res.send({ moderator });
+    });
+
+    // payment intent
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, "amount inside the intent");
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // payment save and delete
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const { email } = req.body;
+      const paymentResult = await PaymentCollection.insertOne(payment);
+      if (paymentResult.insertedId) {
+        const updatedDoc = {
+          $set: {
+            isMember: true,
+          },
+        };
+        await userCollection.updateOne({ email }, updatedDoc);
+      }
+      res.send({ paymentResult });
     });
 
     // Reveiw collection data post
