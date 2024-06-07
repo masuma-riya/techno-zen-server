@@ -177,6 +177,23 @@ async function run() {
       res.send({ moderator });
     });
 
+    // isMember
+    app.get("/users/member/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let member = false;
+      if (user) {
+        member = user?.isMember === true;
+      }
+      res.send({ member });
+    });
+
     // payment intent
     app.post("/create-payment-intent", verifyToken, async (req, res) => {
       const { price } = req.body;
@@ -194,7 +211,7 @@ async function run() {
       });
     });
 
-    // payment save and delete
+    // payment save
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const { email } = req.body;
