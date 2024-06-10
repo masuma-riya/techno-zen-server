@@ -133,6 +133,14 @@ async function run() {
       res.send(result);
     });
 
+    // get myProducts
+    app.get("/myProducts/:email", verifyToken, async (req, res) => {
+      const result = await ProductCollection.find({
+        email: req.params.email,
+      }).toArray();
+      res.send(result);
+    });
+
     // sort by vote count des
     app.get("/trendingProducts", async (req, res) => {
       const { upVote } = req.query;
@@ -438,8 +446,43 @@ async function run() {
       }
     });
 
+    // update a product
+    app.put("/allProducts/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateProduct = req.body;
+      const product = {
+        $set: {
+          productName: updateProduct.productName,
+          productImage: updateProduct.productImage,
+          description: updateProduct.description,
+          link: updateProduct.link,
+        },
+      };
+      const result = await ProductCollection.updateOne(
+        filter,
+        product,
+        options
+      );
+      res.send(result);
+    });
+
+    // delete reported products
+    app.delete(
+      "/products/:id",
+      verifyToken,
+      verifyModerator,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await ProductCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
+
     // delete my added food
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/allProducts/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await ProductCollection.deleteOne(query);
