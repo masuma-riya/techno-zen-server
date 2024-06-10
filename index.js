@@ -20,12 +20,13 @@ const client = new MongoClient(uri, {});
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db("technoZen").collection("users");
     const ProductCollection = client.db("technoZen").collection("products");
     const ReviewsCollection = client.db("technoZen").collection("reviews");
     const PaymentCollection = client.db("technoZen").collection("payments");
+    const CouponCollection = client.db("technoZen").collection("coupons");
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -127,11 +128,25 @@ async function run() {
       res.send(result);
     });
 
+    // CouponCollection all data get
+    app.get("/coupons", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await CouponCollection.find().toArray();
+      res.send(result);
+    });
+
     // get single product data
     app.get("/allProducts/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await ProductCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get single coupon data
+    app.get("/allCoupons/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await CouponCollection.findOne(query);
       res.send(result);
     });
 
@@ -255,6 +270,13 @@ async function run() {
       const productsItem = req.body;
       productsItem.timestamp = new Date().toISOString();
       const result = await ProductCollection.insertOne(productsItem);
+      res.send(result);
+    });
+
+    // Coupon collection  data post
+    app.post("/coupons", verifyToken, verifyAdmin, async (req, res) => {
+      const newCoupon = req.body;
+      const result = await CouponCollection.insertOne(newCoupon);
       res.send(result);
     });
 
@@ -505,10 +527,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
