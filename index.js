@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // mongodb
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rbwl5qc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-wkac0pk-shard-00-00.rbwl5qc.mongodb.net:27017,ac-wkac0pk-shard-00-01.rbwl5qc.mongodb.net:27017,ac-wkac0pk-shard-00-02.rbwl5qc.mongodb.net:27017/?ssl=true&replicaSet=atlas-1019oo-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a new MongoClient
 const client = new MongoClient(uri, {});
@@ -75,6 +75,14 @@ async function run() {
       }
       next();
     };
+
+    // admin stats or analytics
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const products = await ProductCollection.estimatedDocumentCount();
+      const reviews = await ReviewsCollection.estimatedDocumentCount();
+      const users = await userCollection.estimatedDocumentCount();
+      res.send({ products, reviews, users });
+    });
 
     // all users data get
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
@@ -486,6 +494,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await ProductCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // aggregate pipeline
+    app.get("/product-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await ProductCollection.aggregate([]).toArray();
+
       res.send(result);
     });
 
