@@ -20,7 +20,7 @@ const client = new MongoClient(uri, {});
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
 
     const userCollection = client.db("technoZen").collection("users");
     const ProductCollection = client.db("technoZen").collection("products");
@@ -93,9 +93,25 @@ async function run() {
 
     // ProductCollection data get only accepted
     app.get("/accPro", async (req, res) => {
-      const result = await ProductCollection.find({
+      const { tag } = req.query;
+      const { email } = req.query;
+      const { productName } = req.query;
+      console.log(tag);
+      console.log(req.query);
+      const query = {
         ProductStatus: "Accepted",
-      }).toArray();
+      };
+      if (tag) {
+        const regex = new RegExp(`#${tag}`, "i");
+        query.tags = { $elemMatch: { $regex: regex } };
+      }
+      if (email) {
+        query.email = email;
+      }
+      if (productName) {
+        query.productName = productName;
+      }
+      const result = await ProductCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -129,7 +145,7 @@ async function run() {
     });
 
     // CouponCollection all data get
-    app.get("/coupons", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/coupons", async (req, res) => {
       const result = await CouponCollection.find().toArray();
       res.send(result);
     });
@@ -315,7 +331,7 @@ async function run() {
     app.patch(
       "/users/moderator/:id",
       verifyToken,
-      verifyModerator,
+      verifyAdmin,
       async (req, res) => {
         const id = req.params.id;
         const filter = { _id: new ObjectId(id) };
@@ -498,6 +514,37 @@ async function run() {
       res.send(result);
     });
 
+    // update  coupon
+    app.put("/allCoupons/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedCou = req.body;
+      const coupon = {
+        $set: {
+          couponCode: updatedCou.couponCode,
+          expireDate: updatedCou.expireDate,
+          description: updatedCou.description,
+          amount: updatedCou.amount,
+        },
+      };
+      const result = await CouponCollection.updateOne(filter, coupon, options);
+      res.send(result);
+    });
+
+    // delete coupon
+    app.delete(
+      "/allCoupons/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await CouponCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
+
     // delete reported products
     app.delete(
       "/products/:id",
@@ -511,7 +558,7 @@ async function run() {
       }
     );
 
-    // delete my added food
+    // delete specific products
     app.delete("/allProducts/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -527,10 +574,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
